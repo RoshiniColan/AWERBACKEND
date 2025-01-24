@@ -26,8 +26,9 @@ wsServer.on('connection', (socket) => {
 
     // Forward messages from local WebSocket to Deepgram
     socket.on('message', (message) => {
-      console.log('Received audio chunk:', message.length);
+      // console.log('Received audio chunk:', message.length);
       if (deepgramSocket.readyState === WebSocket.OPEN) {
+        console.log("message", message);
         deepgramSocket.send(message);
       }
     });
