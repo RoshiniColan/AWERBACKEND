@@ -15,28 +15,25 @@ wsServer.on("connection", (clientSocket) => {
   // Establish a connection to Deepgram WebSocket API
   const deepgramSocket = new WebSocket('wss://api.deepgram.com/v1/listen',['token','4ffda31faaa695844eef2a9bb233c78615f39ade']);
 
-  // Forward audio data from the client to Deepgram
-  clientSocket.on("message", (message) => {
-    console.log("Audio data received from client.");
-    if (deepgramSocket.readyState === WebSocket.OPEN) {
-      deepgramSocket.send(message);
-    }
-  });
-
-  // Handle transcription messages from Deepgram
-  deepgramSocket.on("message", (deepgramMessage) => {
-    const response = JSON.parse(deepgramMessage);
-    const transcript = response.channel?.alternatives?.[0]?.transcript || "";
-    if (transcript) {
-      console.log("Transcription:", transcript);
-
-      // Optional: Send the transcription back to the client
-      clientSocket.send(JSON.stringify({ transcript }));
-    }
-  });
-
-  deepgramSocket.on("open", () => {
+   // Handle Deepgram connection events
+   deepgramSocket.on("open", () => {
     console.log("Connected to Deepgram WebSocket API.");
+  });
+
+  deepgramSocket.on("message", (deepgramMessage) => {
+    try {
+      const response = JSON.parse(deepgramMessage);
+      const transcript = response.channel?.alternatives?.[0]?.transcript || "";
+
+      if (transcript) {
+        console.log("Transcription:", transcript);
+
+        // Optional: Send the transcription back to the client
+        clientSocket.send(JSON.stringify({ transcript }));
+      }
+    } catch (err) {
+      console.error("Error parsing Deepgram response:", err);
+    }
   });
 
   deepgramSocket.on("close", () => {
@@ -47,9 +44,18 @@ wsServer.on("connection", (clientSocket) => {
     console.error("Deepgram WebSocket error:", error);
   });
 
+  // Forward audio data from the client to Deepgram
+  clientSocket.on("message", (message) => {
+    console.log("Audio data received from client.");
+
+    // Send audio data to Deepgram
+    if (deepgramSocket.readyState === WebSocket.OPEN) {
+      deepgramSocket.send(message);
+    }
+  });
+
   clientSocket.on("close", () => {
     console.log("Client disconnected.");
-    // Close the Deepgram WebSocket when the client disconnects
     if (deepgramSocket.readyState === WebSocket.OPEN) {
       deepgramSocket.close();
     }

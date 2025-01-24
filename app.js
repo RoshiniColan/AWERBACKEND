@@ -159,7 +159,7 @@ app.post("/webhook", async (req, res) => {
   client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
   command_id: uuidv4(), 
   enable_dialogflow: false,
-  stream_bidirectional_codec: "PCMU",
+  stream_bidirectional_codec: "OPUS",
   dialogflow_config: {
     analyze_sentiment: false,
     partial_automated_agent_reply: false
