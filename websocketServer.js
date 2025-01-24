@@ -1,68 +1,67 @@
-import { WebSocketServer } from "ws";
-import WebSocket from "ws"; // Import for Deepgram WebSocket connection
+import { WebSocketServer } from 'ws';
+import WebSocket from 'ws';
+
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
-// Create a WebSocket server
 const wsServer = new WebSocketServer({ port: 3000 });
 
-wsServer.on("connection", (clientSocket) => {
-  console.log("Client connected.");
+wsServer.on('connection', (socket) => {
+  console.log('Client connected.');
 
-  // Establish a connection to Deepgram WebSocket API
-  const deepgramSocket = new WebSocket(
-    `wss://api.deepgram.com/v1/listen?punctuate=true&interim_results=true&language=en-US`,
-    ["token", DEEPGRAM_API_KEY] // Auth via Sec-WebSocket-Protocol header
-  );
-   // Handle Deepgram connection events
-   
-  // Forward audio data from the client to Deepgram
-  clientSocket.on("message", (message) => {
-    // console.log("Audio data received from client.");
-
-    deepgramSocket.on("open", () => {
-      console.log("Connected to Deepgram WebSocket API.");
-    });
-  
-    deepgramSocket.on("message", (deepgramMessage) => {
-      try {
-        const response = JSON.parse(deepgramMessage);
-        const transcript = response.channel?.alternatives?.[0]?.transcript || "";
-  
-        if (transcript) {
-          console.log("Transcription:", transcript);
-  
-          // Optional: Send the transcription back to the client
-          clientSocket.send(JSON.stringify({ transcript }));
-        }
-      } catch (err) {
-        console.error("Error parsing Deepgram response:", err);
-      }
-    });
-  
-    deepgramSocket.on("close", () => {
-      console.log("Deepgram WebSocket connection closed.");
-    });
-  
-    deepgramSocket.on("error", (error) => {
-      console.error("Deepgram WebSocket error:", error);
-    });
-  
-  });
-
-  clientSocket.on("close", () => {
-    console.log("Client disconnected.");
-    if (deepgramSocket.readyState === WebSocket.OPEN) {
-      deepgramSocket.close();
+  // Create Deepgram WebSocket connection
+  const deepgramSocket = new WebSocket('wss://api.deepgram.com/v1/listen', {
+    headers: {
+      Authorization: `Token ${DEEPGRAM_API_KEY}`,
+      'Content-Type': 'audio/webm'
     }
   });
 
-  clientSocket.on("error", (error) => {
-    console.error("Client WebSocket error:", error);
+  // Handle Deepgram socket opening
+  deepgramSocket.onopen = () => {
+    console.log('Connected to Deepgram');
+
+    // Forward messages from local WebSocket to Deepgram
+    socket.on('message', (message) => {
+      console.log('Received audio chunk:', message.length);
+      if (deepgramSocket.readyState === WebSocket.OPEN) {
+        deepgramSocket.send(message);
+      }
+    });
+  };
+
+  // Handle Deepgram transcriptions
+  deepgramSocket.onmessage = (event) => {
+    try {
+      const received = JSON.parse(event.data);
+      const transcript = received.channel.alternatives[0]?.transcript;
+      
+      if (transcript) {
+        console.log('Transcription:', transcript);
+        
+        // Optionally, send transcription back to original client
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ transcript }));
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing Deepgram message:', error);
+    }
+  };
+
+  // Error handling
+  deepgramSocket.onerror = (error) => {
+    console.error('Deepgram WebSocket error:', error);
+  };
+
+  // Handle client disconnection
+  socket.on('close', () => {
+    console.log('Client disconnected');
+    deepgramSocket.close();
   });
 });
 
-console.log("WebSocket server running on ws://localhost:3000");
+console.log('WebSocket server running on ws://localhost:3000');
