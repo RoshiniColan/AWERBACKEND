@@ -9,7 +9,10 @@ import path from "path";
 import Telnyx from "telnyx";
 import { fileURLToPath } from "url"; // Import required for __dirname
 import { v4 as uuidv4 } from 'uuid';
-
+import WebSocket from "ws"; // Import WebSocket client
+import fetch from "cross-fetch";
+import deepgramSDK from "@deepgram/sdk";
+const Deepgram = deepgramSDK.Deepgram;
 
 dotenv.config();
 
@@ -23,7 +26,7 @@ const CALL_CONTROL_APP_ID = process.env.CALL_CONTROL_APP_ID;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const OUTBOUND_VOICE_PROFILE_ID = process.env.OUTBOUND_VOICE_PROFILE_ID;
 const TELNYX_API_KEY = process.env.TELNYX_API_KEY;
-
+const DEEPGRAM_KEY = process.env.DEEPGRAM_API_KEY;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -32,6 +35,28 @@ const recordingsFolder = path.join(__dirname, "recordings");
 if (!fs.existsSync(recordingsFolder)) {
   fs.mkdirSync(recordingsFolder);
 }
+
+// Create a WebSocket client connection to Render's WebSocket server
+const ws = new WebSocket("wss://awerbackend.onrender.com");
+
+ws.on("open", () => {
+  console.log("WebSocket connection established with Render server.");
+});
+
+ws.on("message", (message) => {
+  console.log("Message received from WebSocket server:", message);
+});
+
+ws.on("close", () => {
+  console.log("WebSocket connection closed.");
+});
+
+ws.on("error", (error) => {
+  console.error("WebSocket error:", error);
+});
+
+
+
 app.post("/make-call", async (req, res) => {
   const { to_number } = req.body;
 
@@ -118,16 +143,30 @@ app.post("/webhook", async (req, res) => {
     } else if (eventType === "call.answered") {
       console.log("Call answered! Starting recording...");
 
+       // Send a message to the WebSocket server on Render
+      //  if (ws.readyState === WebSocket.OPEN) {
+      //   ws.send(JSON.stringify({ event: "call.answered", callControlId }));
+      // }
+
       const streamingResponse = await axios.post(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`,
         {
           stream_url: "wss://awerbackend.onrender.com",
           stream_track: "both_tracks",
-  // client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
-  // command_id: uuidv4(), // Generate a unique command_id
+          stream_bidirectional_mode: "rtp",
+  //         "client_state": "aGF2ZSBhIG5pY2UgZGF5ID1d",
+  // "command_id": "891510ac-f3e4-11e8-af5b-de00688a4901",
+  client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
+  command_id: uuidv4(), 
+  enable_dialogflow: false,
+  stream_bidirectional_codec: "PCMU",
+  dialogflow_config: {
+    analyze_sentiment: false,
+    partial_automated_agent_reply: false
+  }
         // Add these additional parameters
-        stream_type: "websocket",
-        stream_protocol: "websocket"  
+        // stream_type: "websocket",
+        // stream_protocol: "websocket"  
         },
         {
           headers: {
@@ -140,6 +179,8 @@ app.post("/webhook", async (req, res) => {
 
 
       console.log(`streaming started for call ${callControlId}:`, streamingResponse.data);
+
+  
       // Start recording the call
       const recordResponse = await axios.post(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`,

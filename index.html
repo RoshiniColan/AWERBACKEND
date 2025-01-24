@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home</title> 
+    </head>
+    <script src="key.js"></script>
+    <script>
+        navigator.mediaDevices.getUserMedia({audio:true}).then((stream)=>{
+            const mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'});
+            const socket = new WebSocket('wss://api.deepgram.com/v1/listen',['token','4ffda31faaa695844eef2a9bb233c78615f39ade']);
+
+            socket.onopen = function(event){
+                mediaRecorder.addEventListener('dataavailable', (event)=>{
+                    if(event.data.size > 0){
+                        socket.send(event.data);
+                    }
+                });
+                mediaRecorder.start(250);
+            }
+            socket.onmessage = function(message){
+                const received = JSON.parse(message.data);
+                const transcript = received.channel.alternatives[0].transcript;
+                console.log(transcript)
+            }
+        })
+    </script>
+</html>
