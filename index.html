@@ -7,7 +7,7 @@
     <script>
         navigator.mediaDevices.getUserMedia({audio:true}).then((stream)=>{
             const mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'});
-            const socket = new WebSocket('wss://awerbackend.onrender.com');
+            const socket = new WebSocket('ws://localhost:3000');
 
             socket.onopen = function(event){
                 mediaRecorder.addEventListener('dataavailable', (event)=>{

@@ -1,6 +1,7 @@
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
-import { WavEncoder } from "wav"; // For converting PCM data to WAV
+import wav from "wav"; // Import the entire package
+const { WavEncoder } = wav; // Destructure WavEncoder
 import dotenv from "dotenv";
 
 dotenv.config();
