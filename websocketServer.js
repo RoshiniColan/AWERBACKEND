@@ -13,9 +13,7 @@ wsServer.on("connection", (clientSocket) => {
   console.log("Client connected.");
 
   // Establish a connection to Deepgram WebSocket API
-  const deepgramSocket = new WebSocket(
-    `wss://api.deepgram.com/v1/listen?access_token=${DEEPGRAM_API_KEY}`
-  );
+  const deepgramSocket = new WebSocket('wss://api.deepgram.com/v1/listen',['token','4ffda31faaa695844eef2a9bb233c78615f39ade']);
 
   // Forward audio data from the client to Deepgram
   clientSocket.on("message", (message) => {
