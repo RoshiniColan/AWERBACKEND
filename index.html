@@ -7,7 +7,7 @@
     <script>
         navigator.mediaDevices.getUserMedia({audio:true}).then((stream)=>{
             const mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'});
-            const socket = new WebSocket('wss://api.deepgram.com/v1/listen',['token','4ffda31faaa695844eef2a9bb233c78615f39ade']);
+            const socket = new WebSocket('ws://localhost:3000');
 
             socket.onopen = function(event){
                 mediaRecorder.addEventListener('dataavailable', (event)=>{
