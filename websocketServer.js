@@ -1,5 +1,6 @@
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
+import { WavEncoder } from "wav"; // For converting PCM data to WAV
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -9,10 +10,15 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 // Create WebSocket server
 const wsServer = new WebSocketServer({ port: 3000 });
 
-// Audio chunk queue for buffering data until Deepgram WebSocket is ready
-const audioChunkQueue = [];
+// Helper to encode raw PCM into WAV format
+const encodeWAV = (pcmBuffer, sampleRate = 8000) => {
+  return WavEncoder.encodeSync({
+    sampleRate,
+    channelData: [pcmBuffer],
+  });
+};
 
-wsServer.on("connection", (socket) => {
+wsServer.on("connection", (clientSocket) => {
   console.log("Client connected.");
 
   // Create Deepgram WebSocket connection
@@ -28,25 +34,20 @@ wsServer.on("connection", (socket) => {
   // Handle Deepgram WebSocket opening
   deepgramSocket.onopen = () => {
     console.log("Connected to Deepgram WebSocket.");
-
-    // Send queued audio chunks to Deepgram
-    while (audioChunkQueue.length > 0) {
-      const chunk = audioChunkQueue.shift(); // Dequeue the first chunk
-      deepgramSocket.send(chunk);
-    }
   };
 
-  // Handle incoming audio from the client
-  socket.on("message", (message) => {
-    // console.log("Received audio chunk from client:", message.length);
+  // Process incoming audio from Telnyx and forward to Deepgram
+  clientSocket.on("message", (message) => {
+    console.log("Received audio chunk from Telnyx.");
+
+    // Assume the audio is PCM (if PCMU, decode first)
+    const sampleRate = 8000; // Adjust as per Telnyx settings
+    const wavBuffer = encodeWAV(Buffer.from(message), sampleRate);
 
     if (deepgramSocket.readyState === WebSocket.OPEN) {
-      // If Deepgram WebSocket is ready, send the audio chunk directly
-      deepgramSocket.send(message);
+      deepgramSocket.send(wavBuffer);
     } else {
-      // Queue the audio chunk if Deepgram WebSocket is not ready
-      console.warn("Deepgram WebSocket is not ready. Queuing audio chunk.");
-      audioChunkQueue.push(message);
+      console.warn("Deepgram WebSocket is not ready.");
     }
   });
 
@@ -60,8 +61,8 @@ wsServer.on("connection", (socket) => {
         console.log("Transcription:", transcript);
 
         // Optionally send transcription back to the client
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ transcript }));
+        if (clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(JSON.stringify({ transcript }));
         }
       }
     } catch (err) {
@@ -80,7 +81,7 @@ wsServer.on("connection", (socket) => {
   };
 
   // Handle client disconnection
-  socket.on("close", () => {
+  clientSocket.on("close", () => {
     console.log("Client disconnected.");
     if (deepgramSocket.readyState === WebSocket.OPEN) {
       deepgramSocket.close();
@@ -88,7 +89,7 @@ wsServer.on("connection", (socket) => {
   });
 
   // Handle client WebSocket errors
-  socket.on("error", (error) => {
+  clientSocket.on("error", (error) => {
     console.error("Client WebSocket error:", error);
   });
 });

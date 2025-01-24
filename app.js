@@ -119,27 +119,27 @@ app.post("/webhook", async (req, res) => {
       console.log(`Inbound call initiated. Call Control ID: ${callControlId}`);
 
       // Answer the inbound call
-      try {
-        const answerResponse = await axios.post(
-          `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
-          {
-            send_silence_when_idle: true,
-            webhook_url: "https://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app/webhook",
-            webhook_url_method: "POST",
-            // stream_url: "wss://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app",
-            // stream_track:"both_tracks"
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.TELNYX_PRIVATE_KEY}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        console.log("Inbound call answered. Response:", answerResponse.data);
-      } catch (err) {
-        console.error("Error answering call:", err.response.data.errors);
-      }
+      // try {
+      //   const answerResponse = await axios.post(
+      //     `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
+      //     {
+      //       send_silence_when_idle: true,
+      //       webhook_url: "https://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app/webhook",
+      //       webhook_url_method: "POST",
+      //       // stream_url: "wss://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app",
+      //       // stream_track:"both_tracks"
+      //     },
+      //     {
+      //       headers: {
+      //         Authorization: `Bearer ${process.env.TELNYX_PRIVATE_KEY}`,
+      //         "Content-Type": "application/json",
+      //       },
+      //     }
+      //   );
+      //   console.log("Inbound call answered. Response:", answerResponse.data);
+      // } catch (err) {
+      //   console.error("Error answering call:", err.response.data.errors);
+      // }
     } else if (eventType === "call.answered") {
       console.log("Call answered! Starting recording...");
 
@@ -159,7 +159,7 @@ app.post("/webhook", async (req, res) => {
   client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
   command_id: uuidv4(), 
   enable_dialogflow: false,
-  stream_bidirectional_codec: "OPUS",
+  stream_bidirectional_codec: "PCMU",
   dialogflow_config: {
     analyze_sentiment: false,
     partial_automated_agent_reply: false
