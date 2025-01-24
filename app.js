@@ -52,8 +52,8 @@ app.post("/make-call", async (req, res) => {
         outbound_voice_profile_id: OUTBOUND_VOICE_PROFILE_ID, // Required for outbound calls
         webhook_url: "https://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app/webhook",
         webhook_url_method: "POST",
-        stream_url: "wss://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app",
-        stream_track:"both_tracks",
+        // stream_url: "wss://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app",
+        // stream_track:"both_tracks",
         // stream_bidirectional_mode:"rtp",
         // command_id: uuidv4(), 
       },
@@ -121,7 +121,7 @@ app.post("/webhook", async (req, res) => {
       const streamingResponse = await axios.post(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`,
         {
-          stream_url: "wss://71c6-2405-201-e02d-906d-38bf-933e-9570-c79.ngrok-free.app/",
+          stream_url: "wss://awerbackend.onrender.com",
           stream_track: "both_tracks",
   // client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
   // command_id: uuidv4(), // Generate a unique command_id

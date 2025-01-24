@@ -1,0 +1,7 @@
+services:
+  - name: websocket-server
+    type: web
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "node server.js"
