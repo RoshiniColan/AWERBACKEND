@@ -16,6 +16,7 @@ const audioChunkQueue = [];
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
     const hex = data.toString("hex", 0, 4); // Read first 4 bytes as hex
+    console.log("hex", hex);
     if (hex === "52494646") { // "RIFF" in ASCII (WAV header)
       return "WAV";
     } else if (hex.startsWith("494433")) { // "ID3" in ASCII (MP3 metadata)
