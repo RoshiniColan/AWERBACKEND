@@ -1,6 +1,7 @@
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
+// import { spawn } from "child_process";
 
 dotenv.config();
 
@@ -12,80 +13,103 @@ const wsServer = new WebSocketServer({ port: 3000 });
 // Audio chunk queue for buffering data until Deepgram WebSocket is ready
 const audioChunkQueue = [];
 
-// Detect the audio format for logging or processing purposes
+
+
+
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
-    const hex = data.toString("hex", 0, 4); // First 4 bytes as hex
-    if (hex === "52494646") return "WAV"; // "RIFF" (WAV header)
-    if (hex.startsWith("494433")) return "MP3"; // "ID3" (MP3 metadata)
-    if (hex.startsWith("8000")) return "RTP/PCMU"; // RTP/PCMU indicator (example)
-    return "Unknown/Raw Audio";
+    const hex = data.toString("hex", 0, 4); // Read first 4 bytes as hex
+    console.log("hex", hex);
+    if (hex === "52494646") { // "RIFF" in ASCII (WAV header)
+      return "WAV";
+    } else if (hex.startsWith("494433")) { // "ID3" in ASCII (MP3 metadata)
+      return "MP3";
+    } else if (hex.startsWith("8000")) { // Example for RTP (customize based on specifics)
+      return "RTP";
+    } else {
+      return "PCM (raw audio)";
+    }
   }
   return "Unknown (Not a Buffer)";
 }
 
-// Handle incoming WebSocket connections from Telnyx clients
+
 wsServer.on("connection", (socket) => {
   console.log("Client connected.");
 
-  // Initialize Deepgram WebSocket
-  const deepgramSocket = new WebSocket("wss://api.deepgram.com/v1/listen", {
+  // Create Deepgram WebSocket connection
+  // const deepgramSocket = new WebSocket(
+  //   `wss://api.deepgram.com/v1/listen?punctuate=true&interim_results=true&language=en-US`,
+  //   {
+  //     headers: {
+  //       Authorization: `Token ${DEEPGRAM_API_KEY}`,
+  //     },
+  //   }
+  // );
+
+  const deepgramSocket = new WebSocket('wss://api.deepgram.com/v1/listen', {
     headers: {
-      Authorization: `Token ${DEEPGRAM_API_KEY}`,
+      'Sec-WebSocket-Protocol': `token, ${DEEPGRAM_API_KEY}`,
     },
   });
 
-  // Handle Deepgram WebSocket connection
+  // Handle Deepgram WebSocket opening
   deepgramSocket.onopen = () => {
     console.log("Connected to Deepgram WebSocket.");
 
-    // Send any queued audio chunks to Deepgram
+    // Send queued audio chunks to Deepgram
     while (audioChunkQueue.length > 0) {
-      const chunk = audioChunkQueue.shift();
+      const chunk = audioChunkQueue.shift(); // Dequeue the first chunk
       console.log("Sending queued audio chunk:", detectAudioFormat(chunk));
+
       deepgramSocket.send(chunk);
     }
   };
 
-  // Handle incoming audio from Telnyx
+  // Handle incoming audio from the client
   socket.on("message", (message) => {
     try {
+      // Detect the format of the incoming message
       const isJson = message.toString().startsWith("{");
-
+  
       if (isJson) {
-        // Parse Telnyx JSON messages
+        // Parse JSON control messages
         const parsed = JSON.parse(message.toString());
-
-        if (parsed.event === "media" && parsed.media?.payload?.data) {
-          // Decode base64-encoded RTP/PCMU audio
+  
+        if (parsed.event === "media" && parsed.media?.payload.data) {
+          // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload.data;
           const pcmuBuffer = Buffer.from(base64Audio, "base64");
-
-          console.log("Received PCMU audio buffer.");
+          console.log("buffer data:", pcmuBuffer);
+  
+          // (Optional) Process PCM data or queue it for Deepgram
           if (deepgramSocket.readyState === WebSocket.OPEN) {
-            deepgramSocket.send(pcmuBuffer); // Send to Deepgram
+            deepgramSocket.send(pcmuBuffer);
           } else {
-            audioChunkQueue.push(pcmuBuffer); // Queue for later
+            audioChunkQueue.push(pcmuBuffer);
           }
         }
       } else {
-        // Binary audio data
+        // Handle binary audio data directly
         console.log("Received binary audio data.");
         if (deepgramSocket.readyState === WebSocket.OPEN) {
           deepgramSocket.send(message); // Send directly to Deepgram
         } else {
-          audioChunkQueue.push(message); // Queue if not ready
+          audioChunkQueue.push(message); // Queue if Deepgram isn't ready
         }
       }
     } catch (err) {
       console.error("Error processing message:", err);
     }
   });
+  
 
   // Handle transcription responses from Deepgram
   deepgramSocket.onmessage = (event) => {
     try {
       const response = JSON.parse(event.data);
+      console.log("event.data", event.data);
+      console.log("Deepgram Response:", response);
       const transcript = response.channel?.alternatives?.[0]?.transcript || "";
 
       if (transcript) {
