@@ -2,12 +2,13 @@ import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
 
+
 dotenv.config();
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
 // Create WebSocket server
-const wsServer = new WebSocketServer({ port: 3000 });
+const wsServer = new WebSocketServer({ port: 8080 });
 
 // Audio chunk queue for buffering data until Deepgram WebSocket is ready
 const audioChunkQueue = [];
@@ -60,7 +61,12 @@ wsServer.on("connection", (socket) => {
   // Handle incoming audio from the client
   socket.on("message", (message) => {
     // console.log("Received audio chunk from client:", message.length);
-    const audioFormat = detectAudioFormat(message);
+
+    const parsed = JSON.parse(message.toString());
+
+    const base64Audio = parsed.media.payload;
+    const audioBuffer = Buffer.from(base64Audio, "base64");
+    const audioFormat = detectAudioFormat(audioBuffer);
 
     console.log("Received audio chunk from client:", {
       type: audioFormat,
@@ -119,4 +125,4 @@ wsServer.on("connection", (socket) => {
   });
 });
 
-console.log("WebSocket server running on ws://localhost:3000");
+console.log("WebSocket server running on ws://localhost:8080");
