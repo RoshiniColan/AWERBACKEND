@@ -77,33 +77,34 @@ wsServer.on("connection", (socket) => {
         // Parse JSON control messages
         const parsed = JSON.parse(message.toString());
   
-        console.log("Parsed JSON message:", parsed);
+        // console.log("Parsed JSON message:", parsed);
         // if(parsed.media){
         //   console.log("parsed media")
         // }
         // if(parsed.media){
         //   console.log("parsed media",parsed.media)
         // }
-        if(parsed && parsed.media &&parsed.media.payload){
-          console.log("parsed media.payload",parsed.media.payload)
-          console.log("Sending queued pcmuBuffer:", detectAudioFormat(parsed.media.payload));
+        // if(parsed && parsed.media &&parsed.media.payload){
+        //   console.log("parsed media.payload",parsed.media.payload)
+        //   console.log("Sending queued pcmuBuffer:", detectAudioFormat(parsed.media.payload));
 
-        }
+        // }
         // if(parsed.media.payload.data){
         //   console.log("parsed media.payload.data",parsed.media.payload.data)
         // }
-        if (parsed.event === "media" && parsed.media?.payload) {
+        if (parsed.event === "media"  && parsed && parsed.media &&parsed.media.payload) {
 
-          // console.log("inside event message:", parsed.media.payload);
+          console.log("inside event message:", parsed.media.payload);
           // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload;
-          const audioData = message.media.payload;
+          // const audioData = message.media.payload;
+          console.log("type of base64Audio:", detectAudioFormat(base64Audio));
 
           const pcmuBuffer = Buffer.from(base64Audio, "base64");
-          console.log("buffer data:", audioData);
+          // console.log("buffer data:", audioData);
   
           // console.log("Sending queued audioData:", detectAudioFormat(audioData));
-          console.log("Sending queued pcmuBuffer:", detectAudioFormat(pcmuBuffer));
+          console.log("type of pcmuBuffer:", detectAudioFormat(pcmuBuffer));
 
           // (Optional) Process PCM data or queue it for Deepgram
           if (deepgramSocket.readyState === WebSocket.OPEN) {
