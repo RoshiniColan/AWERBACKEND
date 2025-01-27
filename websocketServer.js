@@ -1,7 +1,7 @@
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
-// import { spawn } from "child_process";
+import { spawn } from "child_process";
 
 dotenv.config();
 
@@ -30,6 +30,53 @@ const ulawToPcmTable = new Int16Array(256);
 })();
 
 
+// Decode PCMU to PCM
+function decodePCMU(pcmuBuffer) {
+  const pcmBuffer = Buffer.alloc(pcmuBuffer.length * 2); // 16-bit PCM output
+  for (let i = 0; i < pcmuBuffer.length; i++) {
+    const uByte = ~pcmuBuffer[i] & 0xFF;
+    const sign = (uByte & 0x80) ? -1 : 1;
+    const exponent = (uByte >> 4) & 0x07;
+    const mantissa = uByte & 0x0F;
+    const magnitude = ((1 << exponent) + (mantissa << (exponent + 3))) - 33;
+    pcmBuffer.writeInt16LE(sign * magnitude, i * 2); // Write 16-bit PCM value
+  }
+  return pcmBuffer;
+}
+
+// Resample PCM using SoX
+function resamplePCM(inputBuffer, inputRate = 8000, outputRate = 16000) {
+  return new Promise((resolve, reject) => {
+    const sox = spawn("sox", [
+      "-t", "raw", // Input type
+      "-r", inputRate.toString(), // Input sample rate
+      "-e", "signed", // Input encoding
+      "-b", "16", // Input bit depth
+      "-c", "1", // Input channels (mono)
+      "-", // Input from stdin
+      "-t", "raw", // Output type
+      "-r", outputRate.toString(), // Output sample rate
+      "-e", "signed", // Output encoding
+      "-b", "16", // Output bit depth
+      "-c", "1", // Output channels (mono)
+      "-", // Output to stdout
+    ]);
+
+    const chunks = [];
+    sox.stdout.on("data", (chunk) => chunks.push(chunk));
+    sox.stderr.on("data", (err) => console.error(err.toString()));
+    sox.on("close", (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(chunks));
+      } else {
+        reject(new Error(`SoX process exited with code ${code}`));
+      }
+    });
+
+    sox.stdin.write(inputBuffer);
+    sox.stdin.end();
+  });
+}
 
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
@@ -88,14 +135,14 @@ wsServer.on("connection", (socket) => {
         if (parsed.event === "media" && parsed.media?.payload) {
           // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload;
-          // const pcmuBuffer = Buffer.from(base64Audio, "base64");
-          // console.log("Decoded PCM data:", pcmuBuffer);
+          const pcmuBuffer = Buffer.from(base64Audio, "base64");
+          console.log("Decoded PCM data:", pcmuBuffer);
   
           // (Optional) Process PCM data or queue it for Deepgram
           if (deepgramSocket.readyState === WebSocket.OPEN) {
-            deepgramSocket.send(base64Audio);
+            deepgramSocket.send(pcmuBuffer);
           } else {
-            audioChunkQueue.push(base64Audio);
+            audioChunkQueue.push(pcmuBuffer);
           }
         }
       } else {
