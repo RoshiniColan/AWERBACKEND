@@ -73,14 +73,30 @@ wsServer.on("connection", (socket) => {
       const isJson = message.toString().startsWith("{");
   
       if (isJson) {
+        console.log("isJson ",isJson)
         // Parse JSON control messages
         const parsed = JSON.parse(message.toString());
   
+        console.log("Parsed JSON message:", parsed);
+        if(parsed.media){
+          console.log("parsed media")
+        }
+        if(parsed.media){
+          console.log("parsed media",parsed.media)
+        }
+        if(parsed.media.payload){
+          console.log("parsed media.payload",parsed.media.payload)
+        }
+        if(parsed.media.payload.data){
+          console.log("parsed media.payload.data",parsed.media.payload.data)
+        }
         if (parsed.event === "media" && parsed.media?.payload.data) {
+
+          console.log("Parsed JSON message:", parsed.media.payload.data);
           // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload.data;
           const pcmuBuffer = Buffer.from(base64Audio, "base64");
-          console.log("buffer data:", pcmuBuffer);
+          // console.log("buffer data:", pcmuBuffer);
   
           // (Optional) Process PCM data or queue it for Deepgram
           if (deepgramSocket.readyState === WebSocket.OPEN) {
@@ -108,7 +124,7 @@ wsServer.on("connection", (socket) => {
   deepgramSocket.onmessage = (event) => {
     try {
       const response = JSON.parse(event.data);
-      console.log("event.data", event.data);
+      // console.log("event.data", event.data);
       console.log("Deepgram Response:", response);
       const transcript = response.channel?.alternatives?.[0]?.transcript || "";
 
