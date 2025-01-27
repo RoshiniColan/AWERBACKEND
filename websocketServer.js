@@ -2,13 +2,12 @@ import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
 
-
 dotenv.config();
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
 // Create WebSocket server
-const wsServer = new WebSocketServer({ port: 8080 });
+const wsServer = new WebSocketServer({ port: 3000 });
 
 // Audio chunk queue for buffering data until Deepgram WebSocket is ready
 const audioChunkQueue = [];
@@ -60,27 +59,41 @@ wsServer.on("connection", (socket) => {
 
   // Handle incoming audio from the client
   socket.on("message", (message) => {
-    // console.log("Received audio chunk from client:", message.length);
-
-    const parsed = JSON.parse(message.toString());
-
-    const base64Audio = parsed.media.payload;
-    const audioBuffer = Buffer.from(base64Audio, "base64");
-    const audioFormat = detectAudioFormat(audioBuffer);
-
-    console.log("Received audio chunk from client:", {
-      type: audioFormat,
-      length: message?.length,
-    });
-    if (deepgramSocket.readyState === WebSocket.OPEN) {
-      // If Deepgram WebSocket is ready, send the audio chunk directly
-      deepgramSocket.send(message);
-    } else {
-      // Queue the audio chunk if Deepgram WebSocket is not ready
-      console.warn("Deepgram WebSocket is not ready. Queuing audio chunk.", message);
-      audioChunkQueue.push(message);
+    try {
+      // Detect the format of the incoming message
+      const isJson = message.toString().startsWith("{");
+  
+      if (isJson) {
+        // Parse JSON control messages
+        const parsed = JSON.parse(message.toString());
+  
+        if (parsed.event === "media" && parsed.media?.payload) {
+          // Decode base64-encoded PCMU audio
+          const base64Audio = parsed.media.payload;
+          const pcmuBuffer = Buffer.from(base64Audio, "base64");
+          console.log("Decoded PCM data:", pcmuBuffer);
+  
+          // (Optional) Process PCM data or queue it for Deepgram
+          if (deepgramSocket.readyState === WebSocket.OPEN) {
+            deepgramSocket.send(pcmuBuffer);
+          } else {
+            audioChunkQueue.push(pcmuBuffer);
+          }
+        }
+      } else {
+        // Handle binary audio data directly
+        console.log("Received binary audio data.");
+        if (deepgramSocket.readyState === WebSocket.OPEN) {
+          deepgramSocket.send(message); // Send directly to Deepgram
+        } else {
+          audioChunkQueue.push(message); // Queue if Deepgram isn't ready
+        }
+      }
+    } catch (err) {
+      console.error("Error processing message:", err);
     }
   });
+  
 
   // Handle transcription responses from Deepgram
   deepgramSocket.onmessage = (event) => {
@@ -125,4 +138,4 @@ wsServer.on("connection", (socket) => {
   });
 });
 
-console.log("WebSocket server running on ws://localhost:8080");
+console.log("WebSocket server running on ws://localhost:3000");
