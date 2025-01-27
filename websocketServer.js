@@ -115,6 +115,8 @@ wsServer.on("connection", (socket) => {
   deepgramSocket.onmessage = (event) => {
     try {
       const response = JSON.parse(event.data);
+      console.log("event.data", event.data);
+      console.log("Deepgram Response:", response);
       const transcript = response.channel?.alternatives?.[0]?.transcript || "";
 
       if (transcript) {
