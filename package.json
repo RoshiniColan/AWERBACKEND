@@ -2,6 +2,7 @@
   "type": "module",
   "dependencies": {
     "@deepgram/sdk": "^2.4.0",
+    "audio-resampler": "^1.0.1",
     "axios": "^1.7.9",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",

@@ -2,6 +2,7 @@ import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
 
+
 dotenv.config();
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
@@ -12,6 +13,21 @@ const wsServer = new WebSocketServer({ port: 3000 });
 // Audio chunk queue for buffering data until Deepgram WebSocket is ready
 const audioChunkQueue = [];
 
+
+// Resample PCM audio from 8 kHz to 16 kHz
+
+// Create a µ-law to PCM lookup table
+const ulawToPcmTable = new Int16Array(256);
+(function createULawToPcmTable() {
+  for (let i = 0; i < 256; i++) {
+    const uByte = ~i & 0xFF;
+    let sign = (uByte & 0x80) ? -1 : 1;
+    let exponent = (uByte >> 4) & 0x07;
+    let mantissa = uByte & 0x0F;
+    let magnitude = ((1 << exponent) + (mantissa << (exponent + 3))) - 33;
+    ulawToPcmTable[i] = sign * magnitude;
+  }
+})();
 
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
