@@ -122,27 +122,30 @@ wsServer.on("connection", (socket) => {
     }
   };
 
-  // Handle incoming audio from the client
-  socket.on("message", (message) => {
+  socket.on("message", async (message) => {
     try {
-      // Detect the format of the incoming message
       const isJson = message.toString().startsWith("{");
   
       if (isJson) {
-        // Parse JSON control messages
         const parsed = JSON.parse(message.toString());
-  
         if (parsed.event === "media" && parsed.media?.payload) {
-          // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload;
           const pcmuBuffer = Buffer.from(base64Audio, "base64");
-          console.log("Decoded PCM data:", pcmuBuffer);
   
-          // (Optional) Process PCM data or queue it for Deepgram
+          // Decode PCMU to raw PCM
+          const rawPCM = decodePCMU(pcmuBuffer);
+  
+          // Resample PCM to 16kHz
+          const resampledPCM = await resamplePCM(rawPCM, 8000, 16000);
+  
+          // Save to file for debugging (optional)
+          fs.writeFileSync("resampled_audio.pcm", resampledPCM);
+  
+          console.log("Sending PCM data to Deepgram...");
           if (deepgramSocket.readyState === WebSocket.OPEN) {
-            deepgramSocket.send(pcmuBuffer);
+            deepgramSocket.send(resampledPCM);
           } else {
-            audioChunkQueue.push(pcmuBuffer);
+            audioChunkQueue.push(resampledPCM);
           }
         }
       } else {
