@@ -86,13 +86,15 @@ wsServer.on("connection", (socket) => {
         // }
         if(parsed && parsed.media &&parsed.media.payload){
           console.log("parsed media.payload",parsed.media.payload)
+          console.log("Sending queued pcmuBuffer:", detectAudioFormat(parsed.media.payload));
+
         }
         // if(parsed.media.payload.data){
         //   console.log("parsed media.payload.data",parsed.media.payload.data)
         // }
         if (parsed.event === "media" && parsed.media?.payload) {
 
-          console.log("inside event message:", parsed.media.payload);
+          // console.log("inside event message:", parsed.media.payload);
           // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload;
           const audioData = message.media.payload;
@@ -100,7 +102,7 @@ wsServer.on("connection", (socket) => {
           const pcmuBuffer = Buffer.from(base64Audio, "base64");
           console.log("buffer data:", audioData);
   
-          console.log("Sending queued audioData:", detectAudioFormat(audioData));
+          // console.log("Sending queued audioData:", detectAudioFormat(audioData));
           console.log("Sending queued pcmuBuffer:", detectAudioFormat(pcmuBuffer));
 
           // (Optional) Process PCM data or queue it for Deepgram
