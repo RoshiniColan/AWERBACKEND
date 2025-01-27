@@ -12,6 +12,22 @@ const wsServer = new WebSocketServer({ port: 3000 });
 // Audio chunk queue for buffering data until Deepgram WebSocket is ready
 const audioChunkQueue = [];
 
+
+// Utility function to detect audio format
+function detectAudioFormat(data) {
+  if (data instanceof Buffer || data instanceof Uint8Array) {
+    const hex = data.toString("hex", 0, 4); // Read first 4 bytes as hex
+    if (hex === "52494646") { // "RIFF" in ASCII
+      return "WAV";
+    } else {
+      // No header, assume it's PCM if length is valid for audio data
+      return "PCM (raw audio)";
+    }
+  }
+  return "Unknown (Not a Buffer)";
+}
+
+
 wsServer.on("connection", (socket) => {
   console.log("Client connected.");
 
@@ -21,7 +37,6 @@ wsServer.on("connection", (socket) => {
     {
       headers: {
         Authorization: `Token ${DEEPGRAM_API_KEY}`,
-        "Content-Type": "audio/pcm"
       },
     }
   );
@@ -33,6 +48,8 @@ wsServer.on("connection", (socket) => {
     // Send queued audio chunks to Deepgram
     while (audioChunkQueue.length > 0) {
       const chunk = audioChunkQueue.shift(); // Dequeue the first chunk
+      console.log("Sending queued audio chunk:", detectAudioFormat(chunk));
+
       deepgramSocket.send(chunk);
     }
   };
@@ -40,13 +57,18 @@ wsServer.on("connection", (socket) => {
   // Handle incoming audio from the client
   socket.on("message", (message) => {
     // console.log("Received audio chunk from client:", message.length);
+    const audioFormat = detectAudioFormat(message);
 
+    console.log("Received audio chunk from client:", {
+      type: audioFormat,
+      length: message?.length,
+    });
     if (deepgramSocket.readyState === WebSocket.OPEN) {
       // If Deepgram WebSocket is ready, send the audio chunk directly
       deepgramSocket.send(message);
     } else {
       // Queue the audio chunk if Deepgram WebSocket is not ready
-      console.warn("Deepgram WebSocket is not ready. Queuing audio chunk.");
+      console.warn("Deepgram WebSocket is not ready. Queuing audio chunk.", message);
       audioChunkQueue.push(message);
     }
   });
