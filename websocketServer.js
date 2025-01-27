@@ -1,7 +1,7 @@
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import dotenv from "dotenv";
-
+// import { spawn } from "child_process";
 
 dotenv.config();
 
@@ -28,6 +28,8 @@ const ulawToPcmTable = new Int16Array(256);
     ulawToPcmTable[i] = sign * magnitude;
   }
 })();
+
+
 
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
@@ -86,14 +88,14 @@ wsServer.on("connection", (socket) => {
         if (parsed.event === "media" && parsed.media?.payload) {
           // Decode base64-encoded PCMU audio
           const base64Audio = parsed.media.payload;
-          const pcmuBuffer = Buffer.from(base64Audio, "base64");
-          console.log("Decoded PCM data:", pcmuBuffer);
+          // const pcmuBuffer = Buffer.from(base64Audio, "base64");
+          // console.log("Decoded PCM data:", pcmuBuffer);
   
           // (Optional) Process PCM data or queue it for Deepgram
           if (deepgramSocket.readyState === WebSocket.OPEN) {
-            deepgramSocket.send(pcmuBuffer);
+            deepgramSocket.send(base64Audio);
           } else {
-            audioChunkQueue.push(pcmuBuffer);
+            audioChunkQueue.push(base64Audio);
           }
         }
       } else {
