@@ -13,14 +13,16 @@ const wsServer = new WebSocketServer({ port: 3000 });
 const audioChunkQueue = [];
 
 
-// Utility function to detect audio format
 function detectAudioFormat(data) {
   if (data instanceof Buffer || data instanceof Uint8Array) {
     const hex = data.toString("hex", 0, 4); // Read first 4 bytes as hex
-    if (hex === "52494646") { // "RIFF" in ASCII
+    if (hex === "52494646") { // "RIFF" in ASCII (WAV header)
       return "WAV";
+    } else if (hex.startsWith("494433")) { // "ID3" in ASCII (MP3 metadata)
+      return "MP3";
+    } else if (hex.startsWith("8000")) { // Example for RTP (customize based on specifics)
+      return "RTP";
     } else {
-      // No header, assume it's PCM if length is valid for audio data
       return "PCM (raw audio)";
     }
   }

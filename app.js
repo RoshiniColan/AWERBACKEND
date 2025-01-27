@@ -153,13 +153,13 @@ app.post("/webhook", async (req, res) => {
         {
           stream_url: "wss://awerbackend.onrender.com",
           stream_track: "both_tracks",
-          stream_bidirectional_mode: "rtp",
+          stream_bidirectional_mode: "mp3",
   //         "client_state": "aGF2ZSBhIG5pY2UgZGF5ID1d",
   // "command_id": "891510ac-f3e4-11e8-af5b-de00688a4901",
   client_state: "aGF2ZSBhIG5pY2UgZGF5ID1d",
   command_id: uuidv4(), 
   enable_dialogflow: false,
-  stream_bidirectional_codec: "PCMU",
+  // stream_bidirectional_codec: "PCMU",
   dialogflow_config: {
     analyze_sentiment: false,
     partial_automated_agent_reply: false
